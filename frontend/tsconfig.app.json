@@ -30,5 +30,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src", "src/pages/home"]
+  "include": ["src", "src/pages/home", "src/types/**/*"]
 }

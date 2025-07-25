@@ -26,7 +26,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
 	// Expose token refresh function globally for axios interceptor
 	useEffect(() => {
-		window.refreshToken = async () => {
+		(window as any).refreshToken = async () => {
 			try {
 				const newToken = await getToken({ skipCache: true });
 				if (newToken) {
@@ -40,7 +40,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 		};
 
 		return () => {
-			delete window.refreshToken;
+			delete (window as any).refreshToken;
 		};
 	}, [getToken]);
 

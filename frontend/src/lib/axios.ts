@@ -20,8 +20,9 @@ axiosInstance.interceptors.response.use(
 			try {
 				// We need to get the auth context here
 				// This will be set by the AuthProvider
-				if (window.refreshToken) {
-					const newToken = await window.refreshToken();
+				const refreshTokenFn = (window as any).refreshToken;
+				if (refreshTokenFn) {
+					const newToken = await refreshTokenFn();
 					if (newToken) {
 						axiosInstance.defaults.headers.common["Authorization"] = `Bearer ${newToken}`;
 						originalRequest.headers["Authorization"] = `Bearer ${newToken}`;
