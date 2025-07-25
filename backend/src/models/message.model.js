@@ -6,7 +6,7 @@ const messageSchema = new mongoose.Schema(
             type: String,
             required: true,
         }, //clerk user ID
-        receiveId: {
+        receiverId: {
             type: String,
             required: true,
         }, //clerk user ID

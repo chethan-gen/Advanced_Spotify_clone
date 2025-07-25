@@ -56,10 +56,15 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
 	initSocket: (userId) => {
 		if (!get().isConnected) {
+			console.log("=== INITIALIZING SOCKET ===");
+			console.log("User ID:", userId);
+
 			socket.auth = { userId };
 			socket.connect();
 
+			console.log("Socket connecting...");
 			socket.emit("user_connected", userId);
+			console.log("User connected event emitted");
 
 			socket.on("users_online", (users: string[]) => {
 				set({ onlineUsers: new Set(users) });
@@ -84,15 +89,23 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 			});
 
 			socket.on("receive_message", (message: Message) => {
+				console.log("=== RECEIVED MESSAGE ===");
+				console.log("Message:", message);
 				set((state) => ({
 					messages: [...state.messages, message],
 				}));
+				console.log("Message added to state");
+				console.log("======================");
 			});
 
 			socket.on("message_sent", (message: Message) => {
+				console.log("=== MESSAGE SENT CONFIRMATION ===");
+				console.log("Message:", message);
 				set((state) => ({
 					messages: [...state.messages, message],
 				}));
+				console.log("Message added to state");
+				console.log("===============================");
 			});
 
 			socket.on("activity_updated", ({ userId, activity }) => {
@@ -115,10 +128,19 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 	},
 
 	sendMessage: async (receiverId, senderId, content) => {
-		const socket = get().socket;
-		if (!socket) return;
+		console.log("=== FRONTEND SEND MESSAGE ===");
+		console.log("Receiver:", receiverId, "Sender:", senderId, "Content:", content);
 
+		const socket = get().socket;
+		if (!socket) {
+			console.log("No socket connection!");
+			return;
+		}
+
+		console.log("Socket connected:", socket.connected);
 		socket.emit("send_message", { receiverId, senderId, content });
+		console.log("Message emitted to socket");
+		console.log("============================");
 	},
 
 	fetchMessages: async (userId: string) => {

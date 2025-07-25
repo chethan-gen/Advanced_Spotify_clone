@@ -13,8 +13,10 @@ export const getAllUsers = async (req, res, next) => {
 
 export const getMessages = async (req, res, next) => {
 	try {
+		console.log("=== GET MESSAGES DEBUG ===");
 		const myId = req.auth.userId;
 		const { userId } = req.params;
+		console.log("My ID:", myId, "Other user ID:", userId);
 
 		const messages = await Message.find({
 			$or: [
@@ -23,8 +25,13 @@ export const getMessages = async (req, res, next) => {
 			],
 		}).sort({ createdAt: 1 });
 
+		console.log("Found messages:", messages.length);
+		console.log("Messages:", messages);
+		console.log("========================");
+
 		res.status(200).json(messages);
 	} catch (error) {
+		console.log("Error in getMessages:", error);
 		next(error);
 	}
 };

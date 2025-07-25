@@ -14,8 +14,13 @@ export const initializeSocket = (server) => {
 
 	io.on("connection", (socket) => {
 		socket.on("user_connected", (userId) => {
+			console.log("=== USER CONNECTED ===");
+			console.log("User ID:", userId, "Socket ID:", socket.id);
+
 			userSockets.set(userId, socket.id);
 			userActivities.set(userId, "Idle");
+
+			console.log("Current online users:", Array.from(userSockets.keys()));
 
 			// broadcast to all connected sockets that this user just logged in
 			io.emit("user_connected", userId);
@@ -23,6 +28,7 @@ export const initializeSocket = (server) => {
 			socket.emit("users_online", Array.from(userSockets.keys()));
 
 			io.emit("activities", Array.from(userActivities.entries()));
+			console.log("===================");
 		});
 
 		socket.on("update_activity", ({ userId, activity }) => {
@@ -33,21 +39,33 @@ export const initializeSocket = (server) => {
 
 		socket.on("send_message", async (data) => {
 			try {
+				console.log("=== SEND MESSAGE DEBUG ===");
+				console.log("Message data:", data);
 				const { senderId, receiverId, content } = data;
+				console.log("Sender:", senderId, "Receiver:", receiverId, "Content:", content);
 
 				const message = await Message.create({
 					senderId,
 					receiverId,
 					content,
 				});
+				console.log("Message created:", message);
 
 				// send to receiver in realtime, if they're online
 				const receiverSocketId = userSockets.get(receiverId);
+				console.log("Receiver socket ID:", receiverSocketId);
+				console.log("Online users:", Array.from(userSockets.keys()));
+
 				if (receiverSocketId) {
 					io.to(receiverSocketId).emit("receive_message", message);
+					console.log("Message sent to receiver");
+				} else {
+					console.log("Receiver not online");
 				}
 
 				socket.emit("message_sent", message);
+				console.log("Message sent confirmation to sender");
+				console.log("========================");
 			} catch (error) {
 				console.error("Message error:", error);
 				socket.emit("message_error", error.message);

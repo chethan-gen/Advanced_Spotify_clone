@@ -63,11 +63,7 @@ const AddSongDialog = () => {
 			formData.append("audioFile", files.audio);
 			formData.append("imageFile", files.image);
 
-			await axiosInstance.post("/admin/songs", formData, {
-				headers: {
-					"Content-Type": "multipart/form-data",
-				},
-			});
+			await axiosInstance.post("/admin/songs", formData);
 
 			setNewSong({
 				title: "",

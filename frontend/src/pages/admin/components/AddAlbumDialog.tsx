@@ -48,11 +48,7 @@ const AddAlbumDialog = () => {
 			formData.append("releaseYear", newAlbum.releaseYear.toString());
 			formData.append("imageFile", imageFile);
 
-			await axiosInstance.post("/admin/albums", formData, {
-				headers: {
-					"Content-Type": "multipart/form-data",
-				},
-			});
+			await axiosInstance.post("/admin/albums", formData);
 
 			setNewAlbum({
 				title: "",

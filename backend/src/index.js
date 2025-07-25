@@ -35,6 +35,13 @@ app.use(
 );
 
 app.use(express.json()); // to parse req.body
+
+// Debug middleware to log all requests
+app.use((req, res, next) => {
+	console.log(`${req.method} ${req.path} - Headers:`, req.headers.authorization ? 'Auth header present' : 'No auth header');
+	next();
+});
+
 app.use(clerkMiddleware()); // this will add auth to req obj => req.auth
 app.use(
 	fileUpload({

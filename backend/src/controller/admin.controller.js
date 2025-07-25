@@ -5,19 +5,27 @@ import cloudinary from "../lib/cloudinary.js";
 // helper function for cloudinary uploads
 const uploadToCloudinary = async (file) => {
 	try {
+		console.log("Uploading file to Cloudinary:", file.name, file.tempFilePath); // Debug log
 		const result = await cloudinary.uploader.upload(file.tempFilePath, {
 			resource_type: "auto",
 		});
+		console.log("Cloudinary upload successful:", result.secure_url); // Debug log
 		return result.secure_url;
 	} catch (error) {
 		console.log("Error in uploadToCloudinary", error);
-		throw new Error("Error uploading to cloudinary");
+		throw new Error(`Error uploading to cloudinary: ${error.message}`);
 	}
 };
 
 export const createSong = async (req, res, next) => {
 	try {
+		console.log("=== CREATE SONG DEBUG ===");
+		console.log("Request body:", req.body);
+		console.log("Request files:", req.files);
+		console.log("Files keys:", req.files ? Object.keys(req.files) : "No files");
+
 		if (!req.files || !req.files.audioFile || !req.files.imageFile) {
+			console.log("Missing files - returning 400");
 			return res.status(400).json({ message: "Please upload all files" });
 		}
 
@@ -25,19 +33,29 @@ export const createSong = async (req, res, next) => {
 		const audioFile = req.files.audioFile;
 		const imageFile = req.files.imageFile;
 
-		const audioUrl = await uploadToCloudinary(audioFile);
-		const imageUrl = await uploadToCloudinary(imageFile);
+		console.log("Audio file:", audioFile.name, audioFile.size);
+		console.log("Image file:", imageFile.name, imageFile.size);
 
+		console.log("Starting Cloudinary uploads...");
+		const audioUrl = await uploadToCloudinary(audioFile);
+		console.log("Audio uploaded successfully:", audioUrl);
+
+		const imageUrl = await uploadToCloudinary(imageFile);
+		console.log("Image uploaded successfully:", imageUrl);
+
+		console.log("Creating song object...");
 		const song = new Song({
 			title,
-			artist,
+			artists: artist, // Fix: model expects 'artists' field
 			audioUrl,
 			imageUrl,
 			duration,
 			albumId: albumId || null,
 		});
 
+		console.log("Saving song to database...");
 		await song.save();
+		console.log("Song saved successfully:", song._id);
 
 		// if song belongs to an album, update the album's songs array
 		if (albumId) {
@@ -76,14 +94,22 @@ export const deleteSong = async (req, res, next) => {
 
 export const createAlbum = async (req, res, next) => {
 	try {
+		console.log("Request body:", req.body); // Debug log
+		console.log("Request files:", req.files); // Debug log
+
 		const { title, artist, releaseYear } = req.body;
+
+		if (!req.files || !req.files.imageFile) {
+			return res.status(400).json({ message: "Please upload an image file" });
+		}
+
 		const { imageFile } = req.files;
 
 		const imageUrl = await uploadToCloudinary(imageFile);
 
 		const album = new Album({
 			title,
-			artist,
+			artists: artist, // Fix: model expects 'artists' field
 			imageUrl,
 			releaseYear,
 		});
