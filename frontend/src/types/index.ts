@@ -31,6 +31,7 @@ export interface Message {
 	senderId: string;
 	receiverId: string;
 	content: string;
+	read: boolean;
 	createdAt: string;
 	updatedAt: string;
 }

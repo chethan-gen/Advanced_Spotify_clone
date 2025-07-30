@@ -48,6 +48,7 @@ export const initializeSocket = (server) => {
 					senderId,
 					receiverId,
 					content,
+					read: false,
 				});
 				console.log("Message created:", message);
 
@@ -58,6 +59,10 @@ export const initializeSocket = (server) => {
 
 				if (receiverSocketId) {
 					io.to(receiverSocketId).emit("receive_message", message);
+					io.to(receiverSocketId).emit("new_message_notification", {
+						senderId,
+						messageId: message._id,
+					});
 					console.log("Message sent to receiver");
 				} else {
 					console.log("Receiver not online");
@@ -69,6 +74,34 @@ export const initializeSocket = (server) => {
 			} catch (error) {
 				console.error("Message error:", error);
 				socket.emit("message_error", error.message);
+			}
+		});
+
+		socket.on("mark_messages_read", async (data) => {
+			try {
+				const { userId, senderId } = data;
+				
+				await Message.updateMany(
+					{
+						senderId: senderId,
+						receiverId: userId,
+						read: false,
+					},
+					{
+						read: true,
+					}
+				);
+
+				// Notify the sender that their messages have been read
+				const senderSocketId = userSockets.get(senderId);
+				if (senderSocketId) {
+					io.to(senderSocketId).emit("messages_read", { readerId: userId });
+				}
+
+				socket.emit("messages_marked_read");
+			} catch (error) {
+				console.error("Mark messages read error:", error);
+				socket.emit("mark_read_error", error.message);
 			}
 		});
 

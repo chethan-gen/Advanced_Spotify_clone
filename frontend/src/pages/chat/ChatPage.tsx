@@ -7,6 +7,7 @@ import ChatHeader from "./components/ChatHeader";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import MessageInput from "./components/MessageInput";
+import { MessageCircle } from "lucide-react";
 
 const formatTime = (date: string) => {
 	return new Date(date).toLocaleTimeString("en-US", {
@@ -18,11 +19,22 @@ const formatTime = (date: string) => {
 
 const ChatPage = () => {
 	const { user } = useUser();
-	const { messages, selectedUser, fetchUsers, fetchMessages } = useChatStore();
+	const { 
+		messages, 
+		selectedUser, 
+		fetchUsers, 
+		fetchMessages, 
+		initSocket, 
+		fetchUnreadCounts 
+	} = useChatStore();
 
 	useEffect(() => {
-		if (user) fetchUsers();
-	}, [fetchUsers, user]);
+		if (user) {
+			fetchUsers();
+			initSocket(user.id);
+			fetchUnreadCounts();
+		}
+	}, [fetchUsers, user, initSocket, fetchUnreadCounts]);
 
 	useEffect(() => {
 		if (selectedUser) fetchMessages(selectedUser.clerkId);
@@ -88,14 +100,15 @@ const ChatPage = () => {
 		</main>
 	);
 };
-export default ChatPage;
 
 const NoConversationPlaceholder = () => (
-	<div className='flex flex-col items-center justify-center h-full space-y-6'>
-		<img src='https://imgs.search.brave.com/_zt6eA_zA1Kdk7Kt4oWdDSHd5U6BmStkoj86ePITzqM/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9jZG4u/cGl4YWJheS5jb20v/cGhvdG8vMjAyMS8x/Mi8xMS8wNi80MC9z/cG90aWZ5LTY4NjIw/NDlfNjQwLnBuZw' alt='Spotify' className='size-16 animate-bounce' />
+	<div className='flex-1 flex items-center justify-center'>
 		<div className='text-center'>
-			<h3 className='text-zinc-300 text-lg font-medium mb-1'>No conversation selected</h3>
-			<p className='text-zinc-500 text-sm'>Choose a friend to start chatting</p>
+			<MessageCircle className='size-16 text-zinc-400 mx-auto mb-4' />
+			<h3 className='text-lg font-medium text-zinc-300 mb-2'>No conversation selected</h3>
+			<p className='text-zinc-500'>Choose a user from the list to start chatting</p>
 		</div>
 	</div>
 );
+
+export default ChatPage;

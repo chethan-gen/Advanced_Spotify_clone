@@ -13,6 +13,8 @@ interface ChatStore {
 	userActivities: Map<string, string>;
 	messages: Message[];
 	selectedUser: User | null;
+	unreadCounts: Map<string, number>;
+	totalUnreadCount: number;
 
 	fetchUsers: () => Promise<void>;
 	initSocket: (userId: string) => void;
@@ -20,6 +22,9 @@ interface ChatStore {
 	sendMessage: (receiverId: string, senderId: string, content: string) => void;
 	fetchMessages: (userId: string) => Promise<void>;
 	setSelectedUser: (user: User | null) => void;
+	fetchUnreadCounts: () => Promise<void>;
+	fetchUnreadCountByUser: (userId: string) => Promise<number>;
+	markMessagesAsRead: (userId: string) => Promise<void>;
 }
 
 const baseURL = import.meta.env.MODE === "development" ? "http://localhost:5000" : "/";
@@ -39,6 +44,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 	userActivities: new Map(),
 	messages: [],
 	selectedUser: null,
+	unreadCounts: new Map(),
+	totalUnreadCount: 0,
 
 	setSelectedUser: (user) => set({ selectedUser: user }),
 
@@ -51,6 +58,78 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 			set({ error: error.response.data.message });
 		} finally {
 			set({ isLoading: false });
+		}
+	},
+
+	fetchUnreadCounts: async () => {
+		try {
+			const response = await axiosInstance.get("/users/unread-count");
+			const { unreadCount } = response.data;
+			set({ totalUnreadCount: unreadCount });
+
+			// Fetch unread counts for each user
+			const users = get().users;
+			const unreadCounts = new Map<string, number>();
+			
+			for (const user of users) {
+				try {
+					const userResponse = await axiosInstance.get(`/users/unread-count/${user.clerkId}`);
+					const { unreadCount: userUnreadCount } = userResponse.data;
+					if (userUnreadCount > 0) {
+						unreadCounts.set(user.clerkId, userUnreadCount);
+					}
+				} catch (error) {
+					console.error(`Error fetching unread count for user ${user.clerkId}:`, error);
+				}
+			}
+			
+			set({ unreadCounts });
+		} catch (error: any) {
+			console.error("Error fetching unread counts:", error);
+		}
+	},
+
+	fetchUnreadCountByUser: async (userId: string) => {
+		try {
+			const response = await axiosInstance.get(`/users/unread-count/${userId}`);
+			return response.data.unreadCount;
+		} catch (error: any) {
+			console.error("Error fetching unread count by user:", error);
+			return 0;
+		}
+	},
+
+	markMessagesAsRead: async (userId: string) => {
+		try {
+			await axiosInstance.put(`/users/mark-read/${userId}`);
+			
+			// Update local state
+			set((state) => {
+				const newUnreadCounts = new Map(state.unreadCounts);
+				newUnreadCounts.delete(userId);
+				
+				// Recalculate total unread count
+				let newTotalUnreadCount = 0;
+				for (const count of newUnreadCounts.values()) {
+					newTotalUnreadCount += count;
+				}
+				
+				return {
+					unreadCounts: newUnreadCounts,
+					totalUnreadCount: newTotalUnreadCount,
+				};
+			});
+
+			// Emit socket event to mark messages as read
+			const socket = get().socket;
+			if (socket && socket.connected) {
+				socket.emit("mark_messages_read", {
+					userId: get().selectedUser?.clerkId,
+					senderId: userId,
+				});
+			}
+		} catch (error: any) {
+			console.error("Error marking messages as read:", error);
 		}
 	},
 
@@ -108,6 +187,48 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 				console.log("===============================");
 			});
 
+			socket.on("new_message_notification", (data: { senderId: string; messageId: string }) => {
+				console.log("=== NEW MESSAGE NOTIFICATION ===");
+				console.log("Notification data:", data);
+				
+				// Update unread counts
+				set((state) => {
+					const newUnreadCounts = new Map(state.unreadCounts);
+					const currentCount = newUnreadCounts.get(data.senderId) || 0;
+					newUnreadCounts.set(data.senderId, currentCount + 1);
+					
+					return {
+						unreadCounts: newUnreadCounts,
+						totalUnreadCount: state.totalUnreadCount + 1,
+					};
+				});
+				
+				console.log("Unread counts updated");
+				console.log("===============================");
+			});
+
+			socket.on("messages_read", (data: { readerId: string }) => {
+				console.log("=== MESSAGES READ ===");
+				console.log("Reader ID:", data.readerId);
+				
+				// Update unread counts when messages are read
+				set((state) => {
+					const newUnreadCounts = new Map(state.unreadCounts);
+					const currentCount = newUnreadCounts.get(data.readerId) || 0;
+					if (currentCount > 0) {
+						newUnreadCounts.set(data.readerId, currentCount - 1);
+					}
+					
+					return {
+						unreadCounts: newUnreadCounts,
+						totalUnreadCount: Math.max(0, state.totalUnreadCount - 1),
+					};
+				});
+				
+				console.log("Unread counts updated after read");
+				console.log("========================");
+			});
+
 			socket.on("activity_updated", ({ userId, activity }) => {
 				set((state) => {
 					const newActivities = new Map(state.userActivities);
@@ -148,6 +269,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 		try {
 			const response = await axiosInstance.get(`/users/messages/${userId}`);
 			set({ messages: response.data });
+			
+			// Mark messages as read when fetching them
+			await get().markMessagesAsRead(userId);
 		} catch (error: any) {
 			set({ error: error.response.data.message });
 		} finally {

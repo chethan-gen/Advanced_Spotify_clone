@@ -35,3 +35,57 @@ export const getMessages = async (req, res, next) => {
 		next(error);
 	}
 };
+
+export const getUnreadCount = async (req, res, next) => {
+	try {
+		const myId = req.auth.userId;
+		
+		const unreadCount = await Message.countDocuments({
+			receiverId: myId,
+			read: false,
+		});
+
+		res.status(200).json({ unreadCount });
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const getUnreadCountByUser = async (req, res, next) => {
+	try {
+		const myId = req.auth.userId;
+		const { userId } = req.params;
+		
+		const unreadCount = await Message.countDocuments({
+			senderId: userId,
+			receiverId: myId,
+			read: false,
+		});
+
+		res.status(200).json({ unreadCount });
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const markMessagesAsRead = async (req, res, next) => {
+	try {
+		const myId = req.auth.userId;
+		const { userId } = req.params;
+		
+		await Message.updateMany(
+			{
+				senderId: userId,
+				receiverId: myId,
+				read: false,
+			},
+			{
+				read: true,
+			}
+		);
+
+		res.status(200).json({ message: "Messages marked as read" });
+	} catch (error) {
+		next(error);
+	}
+};
